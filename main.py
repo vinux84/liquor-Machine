@@ -2,24 +2,22 @@ import machine
 import utime
 import _thread
 
-# declare pins here
 drink_one = machine.Pin(10, machine.Pin.IN, machine.Pin.PULL_DOWN) # Pin 10 is just a placeholder. TBD on pin
 drink_two = machine.Pin(10, machine.Pin.IN, machine.Pin.PULL_DOWN) # Pin 10 is just a placeholder. TBD on pin
 
 ir_sensor = machine.Pin(10, machine.Pin.IN, machine.Pin.PULL_DOWN) # Pin 10 is just a placeholder. TBD on pin
 
-limit_switch_top = machine.Pin(10, machine.Pin.IN, machine.Pin.PULL_DOWN) # Pin 10 is just a placeholder. TBD on pin
-limit_switch_bottom = machine.Pin(10, machine.Pin.IN, machine.Pin.PULL_DOWN) # Pin 10 is just a placeholder. TBD on pin
+limit_switch_top = machine.Pin(16, machine.Pin.IN, machine.Pin.PULL_UP) 
+limit_switch_bottom = machine.Pin(14, machine.Pin.IN, machine.Pin.PULL_UP) 
 
-server_motor_one = machine.Pin(10, machine.Pin.OUT) # Pin 10 is just a placeholder. TBD on pin
-server_motor_two = machine.Pin(10, machine.Pin.OUT) # Pin 10 is just a placeholder. TBD on pin
+server_motor_one = machine.Pin(21, machine.Pin.OUT)
+server_motor_two = machine.Pin(20, machine.Pin.OUT)
 
 spout_servo = machine.PWM(machine.Pin(15)) # Pin 15 is just a placeholder. Need PWM pin, TBD on pin / this is a servo motor
 spout_servo.freq(50) # need to research, or look sat original whiskey code 
 
 drink_one_pump = machine.Pin(10, machine.Pin.OUT) # Pin 10 is just a placeholder. TBD on pin
 drink_two_pump = machine.Pin(10, machine.Pin.OUT) # Pin 10 is just a placeholder. TBD on pin
-
 
 drink_one_button = False
 drink_two_button = False 
@@ -31,7 +29,6 @@ global bottom_limit_switch
 bottom_limit_switch = False 
 
     
-
 def dispense_drink(type_drink):
     if type_drink == 'one':
         pump_on(drink_one_pump)
@@ -42,55 +39,59 @@ def dispense_drink(type_drink):
         utime.sleep(3)              # this is how long the liquid should pour out
         pump_off(drink_two_pump)
        
-
 def spout_down(): 
     spout_servo.duty_u16(12500) # psuedo duty numbers
     spout_servo.deinit
-
 
 def spout_up(): 
     spout_servo.duty_u16(2500) # psuedo duty numbers
     spout_servo.deinit
 
-
 def pump_off(pump_number):
     pump_number.value(0)
     pump_number.value(0)
-
 
 def pump_on(pump_number):
     pump_number.value(0)
     pump_number.value(1)
 
-
 def server_stop():
     server_motor_one.value(0)
     server_motor_two.value(0)
-
 
 def server_up():
     server_motor_one.value(0)
     server_motor_two.value(1)
 
-
 def server_down():
     server_motor_one.value(1)
     server_motor_two.value(0)
 
+# begin testing function
+def movement(direction, time):
+    if direction == "d":
+        server_down()
+        utime.sleep(time)
+        server_stop()
+    elif direction == "u":
+        server_up()
+        utime.sleep(time)
+        server_stop()
+
+#movement('d', 3)
+movement('u', .10)
+# end testing function
 
 def limit_switch_thread():
     global top_limit_switch
     global bottom_limit_switch
     while True:
-        if limit_switch_bottom.value() == 1: # if limit_switch is off == 0, it will always check if it is 1 (on)
-            bottom_limit_switch = True
-        elif limit_switch_top.value() == 0:
-            top_limit_switch = False
-        elif limit_switch_bottom.value() == 0: 
-            bottom_limit_switch = False
-        elif limit_switch_top.value() == 1:
+        if limit_switch_top.value() == 0:
             top_limit_switch = True
-
+            bottom_limit_switch = False
+        elif limit_switch_bottom.value() == 0:
+            bottom_limit_switch = True
+            top_limit_switch = False 
 
 def main(type_drink):  
     _thread.start_new_thread(limit_switch_thread, ())                   # starting another thread to detect limit switch                                                       # this will control the cup server motor and know what drink to dispense with type_drink
@@ -130,7 +131,6 @@ def button_handler_one(pin):
     else:
         drink_one_button = False
 
-
 def button_handler_two(pin):
     global drink_two_button
     drink_two.irq(handler=None)
@@ -143,6 +143,6 @@ def button_handler_two(pin):
     else:
         drink_two_button = False
 
-
-drink_one.irq(trigger=machine.Pin.IRQ_RISING, handler=button_handler_one)
-drink_two.irq(trigger=machine.Pin.IRQ_RISING, handler=button_handler_two)
+# un comment after proven it works
+#drink_one.irq(trigger=machine.Pin.IRQ_RISING, handler=button_handler_one)
+#drink_two.irq(trigger=machine.Pin.IRQ_RISING, handler=button_handler_two)
