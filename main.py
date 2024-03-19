@@ -2,19 +2,20 @@ import machine
 import utime
 import _thread
 
-drink_one = machine.Pin(10, machine.Pin.IN, machine.Pin.PULL_DOWN) # Pin 10 is just a placeholder. TBD on pin
-drink_two = machine.Pin(10, machine.Pin.IN, machine.Pin.PULL_DOWN) # Pin 10 is just a placeholder. TBD on pin
+drink_one = machine.Pin(26, machine.Pin.IN, machine.Pin.PULL_DOWN)
+drink_two = machine.Pin(27, machine.Pin.IN, machine.Pin.PULL_DOWN)
 
-ir_sensor = machine.Pin(10, machine.Pin.IN, machine.Pin.PULL_DOWN) # Pin 10 is just a placeholder. TBD on pin
+ir_sensor = machine.Pin(22, machine.Pin.IN, machine.Pin.PULL_DOWN) 
 
 limit_switch_top = machine.Pin(16, machine.Pin.IN, machine.Pin.PULL_UP) 
 limit_switch_bottom = machine.Pin(14, machine.Pin.IN, machine.Pin.PULL_UP) 
 
-server_motor_one = machine.Pin(21, machine.Pin.OUT)
-server_motor_two = machine.Pin(20, machine.Pin.OUT)
+server_motor_one = machine.Pin(19, machine.Pin.OUT)
+server_motor_two = machine.Pin(18, machine.Pin.OUT)
 
-spout_servo = machine.PWM(machine.Pin(15)) # Pin 15 is just a placeholder. Need PWM pin, TBD on pin / this is a servo motor
-spout_servo.freq(50) # need to research, or look sat original whiskey code 
+spout = machine.PWM(machine.Pin(12))
+  
+spout.freq(50) 
 
 drink_one_pump = machine.Pin(10, machine.Pin.OUT) # Pin 10 is just a placeholder. TBD on pin
 drink_two_pump = machine.Pin(10, machine.Pin.OUT) # Pin 10 is just a placeholder. TBD on pin
@@ -32,20 +33,22 @@ bottom_limit_switch = False
 def dispense_drink(type_drink):
     if type_drink == 'one':
         pump_on(drink_one_pump)
-        utime.sleep(3)              # this is how long the liquid should pour out
+        utime.sleep(3)              
         pump_off(drink_one_pump)
     elif type_drink == 'two':
         pump_on(drink_two_pump)
-        utime.sleep(3)              # this is how long the liquid should pour out
+        utime.sleep(3)              
         pump_off(drink_two_pump)
        
 def spout_down(): 
-    spout_servo.duty_u16(12500) # psuedo duty numbers
-    spout_servo.deinit
+    spout.duty_u16(6000)
+    utime.sleep(2)
+    spout.deinit()
 
 def spout_up(): 
-    spout_servo.duty_u16(2500) # psuedo duty numbers
-    spout_servo.deinit
+    spout.duty_u16(2500)
+    utime.sleep(2)
+    spout.deinit()
 
 def pump_off(pump_number):
     pump_number.value(0)
@@ -78,8 +81,10 @@ def movement(direction, time):
         utime.sleep(time)
         server_stop()
 
-#movement('d', 3)
-movement('u', .10)
+#server_stop()
+
+#movement('d', .25)
+#movement('u', .25)
 # end testing function
 
 def limit_switch_thread():
@@ -93,10 +98,10 @@ def limit_switch_thread():
             bottom_limit_switch = True
             top_limit_switch = False 
 
-def main(type_drink):  
-    _thread.start_new_thread(limit_switch_thread, ())                   # starting another thread to detect limit switch                                                       # this will control the cup server motor and know what drink to dispense with type_drink
-    if ir_sensor.value() == 1:                                              # does this need a true/false variable
-        if top_limit_switch == True:                                            # as well as detect limit swtiches to stop the motor. This can be done through threading or anycio 
+def main(type_drink):
+    if ir_sensor.value() == 0:
+        _thread.start_new_thread(limit_switch_thread, ()) 
+        if top_limit_switch == True:
             utime.sleep(1) 
             server_down()
             while True:
@@ -105,20 +110,34 @@ def main(type_drink):
                     utime.sleep(1)
                     spout_down()
                     utime.sleep(1)
-                    dispense_drink(type_drink)
-                    utime.sleep(4)              # wait for drips  to stop
+                    #dispense_drink(type_drink)
+                    utime.sleep(4)              
                     spout_up()
                     utime.sleep(1)
                     server_up()
                     while True:
                         if top_limit_switch == True:
                             server_stop()
-                            exit() # break or exit. find proper way to end program to restart 
+                            machine.reset()        
+                    
 
     else:
-        print("Please place cup on holder")                 # debug print        
+        print("Please place cup on holder")                        
 
-
+def reset():
+    #pump_off(drink_one_pump)
+    #pump_off(drink_two_pump)
+    server_stop()
+    utime.sleep(.50)
+    spout_up()
+    utime.sleep(.50)
+    if limit_switch_top.value() == 1:
+        server_up()
+        while True:
+            if limit_switch_top.value() == 0:
+                server_stop()
+                break
+                
 def button_handler_one(pin):
     global drink_one_button
     drink_one.irq(handler=None)
@@ -143,6 +162,8 @@ def button_handler_two(pin):
     else:
         drink_two_button = False
 
-# un comment after proven it works
-#drink_one.irq(trigger=machine.Pin.IRQ_RISING, handler=button_handler_one)
+reset() # for some reason when reset function ran, did not pass it to drink one push button / wait 
+
+drink_one.irq(trigger=machine.Pin.IRQ_RISING, handler=button_handler_one)
 #drink_two.irq(trigger=machine.Pin.IRQ_RISING, handler=button_handler_two)
+
