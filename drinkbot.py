@@ -39,6 +39,8 @@ drink_two_button = False
 drink_three_button = False
 drink_four_button = False
 
+drinkbot_serving = False
+
 
 def spout_down(): 
     spout.duty_u16(4700)
@@ -87,8 +89,10 @@ def dispense_drink(type_drink, drink_duration):                         # code t
         pump_off(drink_four_pump)
 
 def main_dispense(type_drink, drink_duration):
+    global drinkbot_serving
     if ir_sensor.value() == 0:
         if limit_switch_top.value() == 0:
+            drinkbot_serving = True
             utime.sleep(1) 
             server_down()
             d = 1
@@ -109,6 +113,7 @@ def main_dispense(type_drink, drink_duration):
                         if limit_switch_top.value() == 0:
                             server_stop()
                             u -= 1
+                            drinkbot_serving = False
                                            
 def reset():
     pump_off(drink_one_pump)
